@@ -15,7 +15,8 @@ app
   .get("/test", controller.test)
   .post("/business", controller.postBusiness)
   .delete("/business", controller.deleteBusiness)
-  .get("/business/search", controller.getBusiness);
+  .get("/business/search", controller.getBusiness)
+  .put("/business", controller.putBusiness);
 
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`);

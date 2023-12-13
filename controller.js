@@ -441,3 +441,84 @@ exports.getBusiness = async (req, res, next) => {
     }
   }
 };
+
+exports.putBusiness = async (req, res, next) => {
+  let { id } = req.query;
+  let { alias, name, price } = req.body;
+  let query;
+  let rules = {
+    id: "required|check_business",
+    alias: "required",
+    name: "required",
+    price: "required|check_price",
+  };
+
+  let error_msg = {
+    required: ":attribute cannot be null",
+    in: "invalid :attribute",
+  };
+
+  Validator.registerAsync(
+    "check_price",
+    function (price, attribute, req, passes) {
+      if (price == "$" || price == "$$" || price == "$$$" || price == "$$$$") {
+        passes();
+      } else {
+        passes(false, "Invalid price.");
+      }
+    }
+  );
+
+  Validator.registerAsync(
+    "check_business",
+    async function (id, attribute, req, passes) {
+      let [temp] = await model.query(
+        `SELECT * FROM businesses WHERE id = "${id}"`
+      );
+      if (temp.length) {
+        business = temp[0];
+        passes();
+      } else {
+        passes(false, "Access denied.");
+      }
+    }
+  );
+  let validation = new Validator({ id, alias, name, price }, rules, error_msg);
+  validation.checkAsync(passes, fails);
+  function fails() {
+    let message = [];
+    for (var key in validation.errors.all()) {
+      var value = validation.errors.all()[key];
+      message.push(value[0]);
+    }
+    return res.status(200).json({
+      code: 401,
+      status: "error",
+      message: message,
+      result: [],
+    });
+  }
+
+  async function passes() {
+    try {
+      query = `UPDATE businesses SET alias = '${alias}', name = '${name}', price = '${price}' WHERE id = '${id}'`;
+      await model.execute(query);
+      res.json({
+        code: 200,
+        status: "success",
+        message: "success",
+        result: [],
+      });
+    } catch (err) {
+      err.message = err.message.includes("SQLState")
+        ? "Query syntax error."
+        : err.message;
+      res.json({
+        code: 400,
+        status: "error",
+        message: [err.message],
+        result: [],
+      });
+    }
+  }
+};
