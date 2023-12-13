@@ -14,7 +14,8 @@ app
   .use(bodyParser.urlencoded({ extended: false }))
   .get("/test", controller.test)
   .post("/business", controller.postBusiness)
-  .delete("/business", controller.deleteBusiness);
+  .delete("/business", controller.deleteBusiness)
+  .get("/business/search", controller.getBusiness);
 
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`);

@@ -355,3 +355,89 @@ exports.deleteBusiness = async (req, res, next) => {
     }
   }
 };
+
+exports.getBusiness = async (req, res, next) => {
+  let { name, alias, sort, order, limit, price } = req.query;
+  limit = limit ? limit : 20;
+  sort = sort ? sort : "asc";
+  order = order ? order : "id";
+  let rules = {
+      order: "in:id,name,alias",
+      sort: "in:asc,desc",
+      limit: "integer",
+    },
+    query;
+  let check_data = { order, sort, limit };
+  name ? ((check_data.name = name), (rules.name = "required")) : null;
+  alias ? ((check_data.alias = alias), (rules.alias = "required")) : null;
+  price
+    ? ((check_data.price = price), (rules.price = "required|check_price"))
+    : null;
+
+  let error_msg = {
+    required: ":attribute cannot be null",
+    in: "invalid :attribute",
+  };
+
+  Validator.registerAsync(
+    "check_price",
+    function (price, attribute, req, passes) {
+      if (price == "$" || price == "$$" || price == "$$$" || price == "$$$$") {
+        passes();
+      } else {
+        passes(false, "Invalid price.");
+      }
+    }
+  );
+
+  let validation = new Validator(check_data, rules, error_msg);
+  validation.checkAsync(passes, fails);
+  function fails() {
+    let message = [];
+    for (var key in validation.errors.all()) {
+      var value = validation.errors.all()[key];
+      message.push(value[0]);
+    }
+    return res.status(200).json({
+      code: 401,
+      status: "error",
+      message: message,
+      result: [],
+    });
+  }
+
+  async function passes() {
+    try {
+      query = `SELECT * FROM businesses`;
+      name ? (query += ` WHERE name LIKE '%${name}%'`) : null;
+      alias
+        ? query.search("WHERE") != -1
+          ? (query += ` AND alias LIKE '%${alias}%'`)
+          : (query += ` WHERE alias LIKE '%${alias}%'`)
+        : null;
+      price
+        ? query.search("WHERE") != -1
+          ? (query += ` AND price = '${price}'`)
+          : (query += ` WHERE price = '${price}'`)
+        : null;
+      query += ` ORDER BY ${order} ${sort} LIMIT ${limit}`;
+      let [data, b] = await model.query(query);
+      res.json({
+        code: 200,
+        status: "success",
+        message: "success",
+        result: data,
+      });
+    } catch (err) {
+      err.message = err.message.includes("SQLState")
+        ? "Query syntax error."
+        : err.message;
+      res.json({
+        code: 400,
+        status: "error",
+        message: [err.message],
+        result: [],
+      });
+    }
+  }
+};
