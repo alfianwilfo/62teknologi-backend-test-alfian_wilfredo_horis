@@ -13,7 +13,8 @@ app
   .use(cors())
   .use(bodyParser.urlencoded({ extended: false }))
   .get("/test", controller.test)
-  .post("/business", controller.postBusiness);
+  .post("/business", controller.postBusiness)
+  .delete("/business", controller.deleteBusiness);
 
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`);

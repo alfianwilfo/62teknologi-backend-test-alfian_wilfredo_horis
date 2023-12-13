@@ -271,7 +271,87 @@ exports.postBusiness = async (req, res, next) => {
         result: [],
       });
     } catch (error) {
-      console.log(error);
+      err.message = err.message.includes("SQLState")
+        ? "Query syntax error."
+        : err.message;
+      res.json({
+        code: 400,
+        status: "error",
+        message: [err.message],
+        result: [],
+      });
+    }
+  }
+};
+
+exports.deleteBusiness = async (req, res, next) => {
+  let { id } = req.query;
+  let rules = {
+    id: "required|check_business",
+  };
+
+  let error_msg = {
+    required: ":attribute cannot be null",
+    in: "invalid :attribute",
+  };
+
+  let validation = new Validator(
+    {
+      id,
+    },
+    rules,
+    error_msg
+  );
+
+  Validator.registerAsync(
+    "check_business",
+    async function (id, attribute, req, passes) {
+      let [check, s] = await model.execute(
+        `SELECT * FROM businesses WHERE id = '${id}' LIMIT 1`
+      );
+      if (!check.length) {
+        passes(false, "Access denied. Business not found.");
+      } else {
+        passes();
+      }
+    }
+  );
+
+  validation.checkAsync(passes, fails);
+  function fails() {
+    let message = [];
+    for (var key in validation.errors.all()) {
+      var value = validation.errors.all()[key];
+      message.push(value[0]);
+    }
+    return res.status(200).json({
+      code: 401,
+      status: "error",
+      message: message,
+      result: [],
+    });
+  }
+  async function passes() {
+    try {
+      await model.execute(`
+            DELETE FROM businesses WHERE id = "${id}"
+        `);
+      res.json({
+        code: 200,
+        status: "success",
+        message: "success",
+        result: [],
+      });
+    } catch (err) {
+      err.message = err.message.includes("SQLState")
+        ? "Query syntax error."
+        : err.message;
+      res.json({
+        code: 400,
+        status: "error",
+        message: [err.message],
+        result: [],
+      });
     }
   }
 };
